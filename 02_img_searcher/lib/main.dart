@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,7 +33,6 @@ class _ImgSearchPageState extends State<ImgSearchPage> {
   Future<void> fetchImages() async {
     Response response = await Dio().get(
         'https://pixabay.com/api/?key=38847204-143c9db58a89fb463b2edd56d&q=$query&image_type=photo');
-    print(response.data['total']);
 
     hits = response.data['hits'];
     setState(() {});
@@ -65,8 +67,27 @@ class _ImgSearchPageState extends State<ImgSearchPage> {
           itemBuilder: (context, index) {
             Map<String, dynamic> hit = hits[index];
             return InkWell(
-              onTap: () => {
-                print('${hit['likes']}'),
+              onTap: () async {
+                // 1. URL から画像ダウンロード
+                Response response = await Dio().get(
+                  hit['webformatURL'],
+                  options: Options(
+                    responseType: ResponseType.bytes,
+                  ),
+                );
+
+                // 2. ダウンロードした画像を保存
+                Directory dir = await getTemporaryDirectory();
+                File file = await File('${dir.path}/image.png')
+                    .writeAsBytes(response.data);
+
+                // 3. Shareパッケージを呼び出して共有
+                XFile xFile = XFile(file.path); // File を XFile に変換
+
+                Share.shareXFiles(
+                  [xFile],
+                  text: 'こちらの画像をシェアします',
+                );
               },
               child: Stack(
                 fit: StackFit.expand,
